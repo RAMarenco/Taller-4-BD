@@ -15,9 +15,6 @@ AS BEGIN
             SELECT @consultorios = COUNT(*)
             FROM CONSULTORIO        
             WHERE id_clinica = @id_Clinica;  
-
-            print @cantidad_citas;
-            print @consultorios;
         END
     END
     IF(@cantidad_citas >= 0 AND @consultorios > @cantidad_citas)
@@ -27,20 +24,31 @@ AS BEGIN
             FROM CONTRATO 
             WHERE 
                 id_clinica = @id_Clinica AND 
-                CAST(@converted_date AS TIME) <> (SELECT TOP(1)value FROM STRING_SPLIT(horario, '-'));            
+                CAST(@converted_date AS TIME) BETWEEN SUBSTRING(horario,1,(CHARINDEX('-',horario)-1)) AND SUBSTRING(horario,(CHARINDEX('-',horario)+1),8);            
             IF(@cantidad_medicos > @cantidad_citas)
             BEGIN
                 DECLARE @ultima_cita INT;
                 SELECT @ultima_cita = MAX(id) FROM CITA;
                 INSERT INTO CITA VALUES((@ultima_cita+1),@id_Clinica, @id_Cliente, @converted_date);
-                print 'La reserva ha sido exitosa.';
+                print 'La cita ha sido almacenada exitosamente.';
             END
             ELSE
-                print 'No se pudo crear la cita, no se encuentran medicos disponibles.';            
+                print 'No es posible registrar la cita porque no hay médico disponibles.';            
         END       
     ELSE
-        print 'No se pudo crear la cita, no se encuentran consultorios disponibles.';        
+        print 'No es posible registrar la cita porque no hay consultorios disponibles.';        
 END;
 GO
 
-EXEC BOOKING 1,5,'21-05-2022 09:00:00:000';
+EXEC BOOKING 1,5,'20-05-2022 09:00:00:000';
+
+SELECT *
+FROM CONTRATO 
+WHERE 
+    id_clinica = 1 AND 
+    CAST('2022-05-21 07:00:00.000' AS TIME) >= (SELECT TOP(1)value FROM STRING_SPLIT(horario, '-'));    
+
+SELECT value FROM STRING_SPLIT((SELECT TOP(1)horario FROM CONTRATO), '-')
+SELECT SUBSTRING(horario,1,(CHARINDEX('-',horario)-1)),  SUBSTRING(horario,(CHARINDEX('-',horario)+1),8) FROM CONTRATO;
+SELECT CHARINDEX('-',horario) FROM CONTRATO;
+SELECT CAST('2022-05-21 07:00:00.000' AS TIME);
