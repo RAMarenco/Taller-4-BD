@@ -37,40 +37,56 @@ CREATE PROCEDURE BOOKING
         @fecha VARCHAR(32)
 AS BEGIN
     BEGIN
+        --Se convierte la fecha de un formato dd-mm-yyyy hh:mm:ss:nnn a formato yyyy-mm-dd hh:mm:ss:nnn.
         DECLARE @converted_date VARCHAR(32);        
         SELECT @converted_date = (CONVERT(VARCHAR(10), CONVERT(date, @fecha, 105), 23) + ' ' + CONVERT(varchar, CONVERT(time, @fecha, 105), 24));
+
         BEGIN
+            --Obteniendo cantidad de citas en una clinica en fecha especificada.
             DECLARE @cantidad_citas INT;
             SELECT @cantidad_citas = COUNT(id)
-            FROM CITA WHERE id_clinica = @id_Clinica AND fecha = LEFT(@converted_date, LEN(@converted_date)-4);     
+            FROM CITA 
+            WHERE 
+                id_clinica = @id_Clinica AND 
+                fecha = LEFT(@converted_date, LEN(@converted_date)-4);     
 
+            --Obteniendo cantidad de consultorios de una clinica.
             DECLARE @consultorios INT;
             SELECT @consultorios = COUNT(*)
             FROM CONSULTORIO        
-            WHERE id_clinica = @id_Clinica;  
+            WHERE 
+                id_clinica = @id_Clinica;  
         END
     END
+    --Verificando que una clinica tenga 0 o mas citas y que la cantidad de consultorios sea mayor a la cantidad de citas.
     IF(@cantidad_citas >= 0 AND @consultorios > @cantidad_citas)
         BEGIN
+            --Obteniendo cantidad de medicos que trabajan en una clinica y que trabajen a la hora especificada.
             DECLARE @cantidad_medicos INT;
             SELECT @cantidad_medicos = count(id) 
             FROM CONTRATO 
             WHERE 
                 id_clinica = @id_Clinica AND 
-                CAST(@converted_date AS TIME) BETWEEN SUBSTRING(horario,1,(CHARINDEX('-',horario)-1)) AND SUBSTRING(horario,(CHARINDEX('-',horario)+1),8);            
+                CAST(@converted_date AS TIME) BETWEEN SUBSTRING(horario,1,(CHARINDEX('-',horario)-1)) AND SUBSTRING(horario,(CHARINDEX('-',horario)+1),8);   
+
+            --Verificando si la cantidad de medicos es mayor a la cantidad de citas, de ser así la cita se guarda.
             IF(@cantidad_medicos > @cantidad_citas)
-            BEGIN
-                DECLARE @ultima_cita INT;
-                SELECT @ultima_cita = MAX(id) FROM CITA;
-                INSERT INTO CITA VALUES((@ultima_cita+1),@id_Clinica, @id_Cliente, @converted_date);
-                print 'La cita ha sido almacenada exitosamente.';
-            END
+                BEGIN
+                    --Se guarda la cita.
+                    DECLARE @ultima_cita INT;
+                    SELECT @ultima_cita = MAX(id) FROM CITA;
+                    INSERT INTO CITA VALUES((@ultima_cita+1),@id_Clinica, @id_Cliente, @converted_date);
+                    print 'La cita ha sido almacenada exitosamente.';
+                END
+            --Caso contrario se manda mensaje de que no fue posible guardar la cita.    
             ELSE
                 print 'No es posible registrar la cita porque no hay médico disponibles.';            
-        END       
+        END
+    --Caso contrario se manda un mensaje en el cual se especifica que no hay consultorios disponibles.
     ELSE
         print 'No es posible registrar la cita porque no hay consultorios disponibles.';        
-END;
+END
 GO
 
+--Ejecucion del proceso.
 EXEC BOOKING 1,5,'20-05-2022 09:00:00:000';
